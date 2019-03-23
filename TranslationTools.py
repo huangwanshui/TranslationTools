@@ -29,46 +29,67 @@ def showLanguageView():
 	frm = Frame(win)
 	for keyName in languagemap.keys():
 		checkVal = IntVar()
-		Checkbutton(frm,text = languagemap[keyName],variable = checkVal,onvalue = 1,offvalue = 0).grid(row = 0,column = _column)
+		checkbox[keyName] = Checkbutton(frm,text = languagemap[keyName],variable = checkVal,onvalue = 1,offvalue = 0)
+		checkbox[keyName].grid(row = 0,column = _column)
 		checkStatus[keyName] = checkVal
 		_column += 1
+		
+	checkVal = IntVar()
+	checkbox["All"] = Checkbutton(frm,text = "全选",variable = checkVal,onvalue = 1,offvalue = 0,command = allSelected)
+	checkbox["All"].grid(row = 0,column = _column)
+	checkStatus["All"] = checkVal
+	
 	frm.grid(row = 1)
 	Label(win,text="Key:").grid(row = 2,column = 0)
 	Entry(win,textvariable = replaceKey).grid(row = 2,column = 1)
 	Label(win,text="Value:").grid(row = 2,column = 2)
 	Entry(win,textvariable = replaceValue).grid(row = 2,column = 3)
-	Button(win,text="查找",command = search).grid(row = 2,column = 4)
-	Button(win,text="替换",command = replace).grid(row = 2,column = 5)
+	#Button(win,text="查找",command = search).grid(row = 2,column = 4)
+	#Button(win,text="替换",command = replace).grid(row = 2,column = 5)
 	Button(win,text="插入",command = inset).grid(row = 2,column = 6)
-	Button(win,text="删除",command = delete).grid(row = 2,column = 7)
+	Button(win,text="删除",command = deleteByKey).grid(row = 2,column = 7)
 	Button(win,text="翻译",command = lambda : translation()).grid(row = 2,column = 8)
-	
+
+def allSelected():
+	allCheckVal = IntVar()
+	allCheckVal = checkStatus["All"]
+	for keyName in checkbox.keys():
+		if keyName == "All":
+			continue
+		if allCheckVal.get() == 1:
+			checkbox[keyName].select()
+		else :
+			checkbox[keyName].deselect()
+		
 def replace():
 	resultStr = ""
 	replaceRet = False
 	replaceCount = 0
 	status = IntVar()
-	for keyName in childpathmap.keys():
-		if keyName in checkStatus.keys():
-			status = checkStatus[keyName]
-		else :
-			status.set(0)
-		if status.get() == 1 :
-			filePath = childpathmap[keyName]
-			if os.path.isfile(filePath):
-				with open(filePath,'r', encoding='UTF-8') as file_r:
-					lines = file_r.readlines()
-					with open(filePath,'w',encoding='UTF-8') as file_w:
-						for line in lines:
-							if line.find(replaceKey.get()) != -1:
-								resultStr = resultStr + line + "替换成" + "\n"
-								line = replaceKey.get() + "=" + replaceValue.get() + "\n";
-								resultStr = resultStr + line
-								replaceRet = True
-								replaceCount += 1
-							file_w.write(line)
-	if replaceRet :
-		tkinter.messagebox.showinfo("有"+str(replaceCount)+"处被替换",resultStr)
+	if replaceKey.get() == '':
+		tkinter.messagebox.showinfo('','替换失败，Key不能为空')
+	else :
+		for keyName in childpathmap.keys():
+			if keyName in checkStatus.keys():
+				status = checkStatus[keyName]
+			else :
+				status.set(0)
+			if status.get() == 1 :
+				filePath = childpathmap[keyName]
+				if os.path.isfile(filePath):
+					with open(filePath,'r', encoding='UTF-8') as file_r:
+						lines = file_r.readlines()
+						with open(filePath,'w',encoding='UTF-8') as file_w:
+							for line in lines:
+								if replaceKey.get() != '' and line.find(replaceKey.get()) != -1:
+									resultStr = resultStr + line + "替换成" + "\n"
+									line = replaceKey.get() + "=" + replaceValue.get() + "\n";
+									resultStr = resultStr + line
+									replaceRet = True
+									replaceCount += 1
+								file_w.write(line)
+		if replaceRet :
+			tkinter.messagebox.showinfo("有"+str(replaceCount)+"处被替换",resultStr)
 
 def search():
 	resultStr = ""
@@ -107,21 +128,26 @@ def search():
 def inset():
 	resultStr = ""
 	insertRet = False
-	for keyName in childpathmap.keys():
-		if keyName in checkStatus.keys():
-			status = checkStatus[keyName]
-		else :
-			status = checkStatus["defualt"]
-		if status.get() == 1 :
-			filePath = childpathmap[keyName]
-			if os.path.isfile(filePath):
-				with open(filePath,'r', encoding='UTF-8') as file_r:
-					lines = file_r.readlines()
-					with open(filePath,'w',encoding='UTF-8') as file_w:
-						for line in lines:
-							file_w.write(line)
-						file_w.write("\n" + replaceKey.get() + "=" + replaceValue.get() + "\n")
-	tkinter.messagebox.showinfo("插入成功","插入成功")
+	if replaceKey.get() == '':
+		tkinter.messagebox.showinfo('','替换失败，Key不能为空')
+	else:
+		for keyName in childpathmap.keys():
+			if keyName in checkStatus.keys():
+				status = checkStatus[keyName]
+			else :
+				continue
+			if status.get() == 1 :
+				des = getTranslationResult(replaceValue.get(),keyName)
+				filePath = childpathmap[keyName]
+				if os.path.isfile(filePath):
+					with open(filePath,'r', encoding='UTF-8') as file_r:
+						lines = file_r.readlines()
+						with open(filePath,'w',encoding='UTF-8') as file_w:
+							for line in lines:
+								if line != '\n':
+									file_w.write(line)
+							file_w.write("\n" + replaceKey.get() + "=" + des)
+		tkinter.messagebox.showinfo("插入成功","插入成功")
 
 def delete():
 	resultStr = ""
@@ -130,7 +156,7 @@ def delete():
 		if keyName in checkStatus.keys():
 			status = checkStatus[keyName]
 		else :
-			status = checkStatus["defualt"]
+			continue
 		if status.get() == 1 :
 			filePath = childpathmap[keyName]
 			if os.path.isfile(filePath):
@@ -142,8 +168,28 @@ def delete():
 								continue
 							file_w.write(line)
 	tkinter.messagebox.showinfo("删除成功","删除成功")
+
+def deleteByKey():
+	resultStr = ""
+	insertRet = False
+	for keyName in childpathmap.keys():
+		if keyName in checkStatus.keys():
+			status = checkStatus[keyName]
+		else :
+			continue
+		if status.get() == 1 :
+			filePath = childpathmap[keyName]
+			if os.path.isfile(filePath):
+				with open(filePath,'r', encoding='UTF-8') as file_r:
+					lines = file_r.readlines()
+					with open(filePath,'w',encoding='UTF-8') as file_w:
+						for line in lines:
+							if line.find(replaceKey.get() + "=") != -1:
+								continue
+							file_w.write(line)
+	tkinter.messagebox.showinfo("删除成功","删除成功")
 	
-	
+
 def translation():
 	if checkStatus['en.txt'].get() == 1 and checkStatus['zh_CN.txt'].get() == 1:
 		baidu_from = 'zh'
@@ -184,16 +230,68 @@ def translation():
 		if httpClient:
 			httpClient.close()
 
+def getTranslationResult(source,keyName):
+	if keyName == "en.txt":
+		baidu_from = 'zh'
+		baidu_to = 'en'
+	elif keyName == "zh_TW.txt":
+		baidu_from = 'zh'
+		baidu_to = 'cht'
+	else :
+		return source
+	baidu_appid = '20181027000225987'
+	baidu_key = '4TYcP_uUit4JB7FLMdx9'
+	baidu_q = source
+	baidu_salt = random.randint(32768, 65536)
+	baidu_sign = baidu_appid + baidu_q + str(baidu_salt) + baidu_key
+	m1 = hashlib.md5(baidu_sign.encode('utf-8'))
+	baidu_sign = m1.hexdigest()
+	baidu_Url = '/api/trans/vip/translate'
+	baidu_Url = baidu_Url+'?appid='+baidu_appid+'&q='+urllib.parse.quote(baidu_q)+'&from='+baidu_from+'&to='+baidu_to+'&salt='+str(baidu_salt)+'&sign='+baidu_sign
+	
+	print(baidu_Url)
+	httpClient = None
+	try:
+		httpClient = http.client.HTTPConnection('api.fanyi.baidu.com')
+		httpClient.request('GET', baidu_Url)
+
+		#response是HTTPResponse对象
+		response = httpClient.getresponse()
+		data = json.loads(response.read().decode('utf-8'))
+		if 'error_code' in data:
+			tkinter.messagebox.showinfo("翻译结果","翻译失败:"+data['error_code'])
+		else :
+			dst = data['trans_result'][0]['dst']
+		return dst
+	except Exception as e:
+		print(e)
+	finally:
+		if httpClient:
+			httpClient.close()
+			
 win = Tk()
 rootdir = StringVar()
 checkStatus = {}
 childpathmap = {}
+checkbox = {}
 replaceKey = StringVar()
 replaceValue = StringVar()
 languagemap = {"en.txt":"英文"
-,"zh_CN.txt":"中文"
-,"zh_TW.txt":"繁体"
-,"defualt":"默认"}
+	,"zh_CN.txt":"中文"
+	,"zh_TW.txt":"繁体"
+	#,"ko_kr.txt":"韩语"
+	#,"vi_CN.txt":"越南语"
+	#,"de_US.txt":"德语"
+	#,"es_US.txt":"西班牙语"
+	#,"fr_US.txt":"法语"
+	#,"it_US.txt":"意大利语"
+	#,"ja_CN.txt":"日语"
+	#,"pt_BR.txt":"葡萄牙语"
+	#,"th_CN.txt":"泰语"
+	#,"tr.txt":"土耳其语"
+	#,"ru_CN.txt":"俄语"
+	,"defualt":"默认"
+}
 
 Label(win,text = "翻译文件路径:").grid(row = 0,column = 0)
 Entry(win,textvariable = rootdir).grid(row = 0,column = 1)
